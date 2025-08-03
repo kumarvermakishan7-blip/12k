@@ -1,0 +1,62 @@
+# Install IBM Watson SDK if not already installed
+!pip install ibm-watson
+
+from ibm_watson import AssistantV2
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+# ==== Your Provided Credentials ====
+api_key = '1R89N6-HhJzJ8LHofY6c7sj-p50A5UyejCCrABfA8im8'  # Your API key
+assistant_id = '8b8120b1-441a-4ecb-ae46-0f90836b03e6'     # Your Assistant ID
+service_url = 'https://api.au-syd.assistant.watson.cloud.ibm.com'  # Assistant base URL
+
+# Authenticate and create Assistant client
+authenticator = IAMAuthenticator(api_key)
+assistant = AssistantV2(
+    version='2021-06-14',
+    authenticator=authenticator
+)
+assistant.set_service_url(service_url)
+
+# Create a session
+session_response = assistant.create_session(
+    assistant_id=assistant_id
+).get_result()
+session_id = session_response['session_id']
+print(f"Session created with ID: {session_id}")
+
+# Function to send a message to the Assistant
+def send_message(text):
+    response = assistant.message(
+        assistant_id=assistant_id,
+        session_id=session_id,
+        environment_id='draft',  # Required parameter for your setup
+        input={
+            'message_type': 'text',
+            'text': text
+        }
+    ).get_result()
+
+    # Extract and collect the text parts of the response
+    output_texts = []
+    if 'output' in response:
+        for msg in response['output'].get('generic', []):
+            if msg['response_type'] == 'text':
+                output_texts.append(msg['text'])
+
+    return output_texts, response
+
+# Test the chatbot with a sample message
+user_input = "Recommend me a thriller book"
+bot_replies, full_response = send_message(user_input)
+
+print(f"User: {user_input}")
+print("Bot response(s):")
+for reply in bot_replies:
+    print(f"- {reply}")
+
+# Delete the session after usage
+assistant.delete_session(
+    assistant_id=assistant_id,
+    session_id=session_id
+)
+print("Session deleted.")
